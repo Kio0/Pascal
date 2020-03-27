@@ -1,0 +1,91 @@
+//лексический анализатор. Первая лабораторная для Вишнякова. Входной язык Java Script
+
+{
+ идентификаторы;
+ числовые константы целого типа и вещественного типа,
+представленные с фиксированной и плавающей точкой;
+ символьные (строковые) константы;
+ переменные с индексами (массивы и элементы массивов);
+ комментарии (строчные и блочные);
+ имена функций пользователя;
+ арифметические операции;
+ операции сравнения (меньше, больше, равно, не равно, меньше или
+равно, больше или равно);
+ операторы описания данных (идентификаторов и массивов);
+ операторы описания процедур и функций (если предусмотрены в
+языке);
+ операторы условного и безусловного перехода;
+ метки (если предусмотрены в языке). 
+}
+Uses GraphABC;
+var kolIdent: integer; //количествов
+var name_ident: array[1..1000] of string; //названия слов - идентефикаторов. 
+//Ключевые слова выделяются оранжевым. Комментарии выделяются красным. Процедуры и названия переменных выделяются синим. Числа и строки выделяются зелёным.
+
+
+type Obgect=record //один элемент текста, одно слово
+  tip: string; //тип элемента
+  S: string; //значение элемента
+  int: integer; //числовое значение
+  r: real; //дробное значение
+end;
+
+
+
+var words: array[1..1000] of string; //последовательность слов программы
+var kolWord: integer; //количество слов в программе
+
+
+function testint(s: string):boolean; //возвращает true если в строке записано число
+var b: boolean;
+var i: integer;
+begin
+  b:=true;
+for i:=1 to length(s) do if (s[i]<'0') or (s[i]>'9') then if (s[i]<>'-') or (i>1) then if (s[i]<>'.') or (i=1) or (pos('.',s)<i) then b:=false;
+testint:=b;
+end; 
+function testword(s:string):boolean; //возвращает true если подано ключевое слово
+begin
+  
+ 
+end;
+
+Procedure ReadText(s: string);  //считываем текст из файла s
+var t: text;
+var i,r: integer;
+var str,ss,s1: string;
+begin
+assign(t,s);
+reset(t);
+while not(eof(t)) do begin
+readln(t,s1);
+ss:=ss+s1+' ';
+end;
+for i:=1 to length(ss) do 
+  if ss[i]<>' ' then Str:=Str+ss[i] else
+  if length(str)>0 then begin
+    kolWord:=kolWord+1;
+    words[kolword]:=str;
+    str:='';
+  end;
+
+
+
+close(t);  
+end;
+
+procedure WriteText();
+begin
+  
+  
+  
+end;
+
+
+var i,r: integer;
+begin
+  ReadText('text.txt');
+  writeln(testint);
+for i:=1 to kolWord do writeln(words[i]);
+end.
+
