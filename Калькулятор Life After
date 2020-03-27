@@ -1,0 +1,420 @@
+//программа -счётчик любых рецептов
+//рецепты загружаются из файла в формате строки <объект крафта>, <предмет 1>, <предмет 2> ...
+//в этой версии я оптимизирую систему задания сотни камней путём добавления 100 объектов с именем "камень".
+Uses GraphABC;
+var i,r: integer;
+const Ширина=7; //размеры блока с предметами
+const Высота=30; 
+const ШиринаФото=240; 
+const ВысотаФото=180; 
+type Spisok=record 
+a: array[1..1000] of string; //список компонентов, нужных для рецепта
+k: array[1..1000] of integer; //количество каждого компонента
+end;
+type Komponent=record
+S: spisok; //список предметов, нужны для крафта. Если пусто, предмет не имеет крафта
+kol: integer; //количество предметов
+name: string; //название предмета
+end;
+var Mas: array [1..1000] of Komponent; //список предметов.
+var Tex: array [1..1000] of Picture; //список текстур предметов
+var S: string;
+var kolKom,v: integer;
+var Craft: boolean;
+var Gold: picture;
+var SumMoney: integer;
+var dy: integer;
+var Rez: Picture;
+type Цена=record 
+name: string;
+m: integer;
+end;
+
+var Mon: array[1..3000] of Цена;
+var kolmon: integer;
+var fon: picture;
+Procedure clear();
+var i,r: integer;
+begin
+if not(fileexists('icon/fon.jpg')) then clearWindow(clblack) else begin 
+for i:=0 to 5 do 
+for r:=0 to 3 do fon.draw(i*fon.width,r*fon.height-dy);
+setbrushcolor(clBlack);
+
+end;
+
+end;
+
+Function TextStr(s: string): string; //возвращает текстовую составляющую строки
+var Str: string;
+begin
+Str:=s;
+while (length(str)>0) and ((Str[length(str)]=' ') or ((Str[length(str)]>='0') and  (Str[length(str)]<='9'))) do delete(str,length(str),1);
+TextStr:=Str;
+end;
+Function IntStr(s: string): integer; //возвращает числовую составляющую строки
+var i,r,Sum:integer;
+begin
+for i:=1 to length(s) do if (S[i]<='9') and (S[i]>='0') then for r:=0 to 9 do if S[i]=(r+'') then Sum:=Sum*10+r;
+intstr:=sum;
+end;
+Function Pusto(): picture; //генерирует пустое изображение
+var PP: picture;
+var i,r: integer;
+const ШиринаФото=80;
+begin
+PP:=new Picture(ШиринаФото,ШиринаФото);
+for i:=0 to ШиринаФото-1 do for r:=0 to ШиринаФото-1 do PP.SetPixel(i,r,RGB(160,70,160));
+SetPenWidth(5);
+SetPenColor(clRed);
+PP.Line(1,1,ШиринаФото,ШиринаФото);
+PP.Line(1,ШиринаФото,ШиринаФото,1);
+Pusto:=PP;
+end;
+
+Procedure Dob(ss: string); //добавляет в mas форматную строку
+var i,r: integer;
+var S,S1: string;
+var kol: integer;
+begin
+s:=ss;
+S1:=copy(S,1,Pos(',',S)-1);  //копируем название компонента
+Delete(S,1,Pos(',',S)); //удаляем названние компонента
+while S[1]=' ' do begin Delete(S,1,1); if length(s)=0 then break; end; //удаляем пробелы в начале
+kolKom:=kolKom+1;
+Mas[kolKom].name:=S1; //заносим в название типа название элемента
+while length(s)>0 do begin
+kol:=kol+1;
+if Pos(',',S)=0 then begin S1:=S; S:=''; end else begin 
+S1:=copy(S,1,Pos(',',S)-1); 
+Delete(S,1,Pos(',',S)); end;
+if length(s)>0 then while S[1]=' ' do begin Delete(S,1,1); if length(s)=0 then break; end;
+Mas[kolKom].S.a[kol]:=TextStr(S1);//название элемента
+if IntStr(S1)<2 then Mas[kolKom].S.k[kol]:=1 else Mas[kolKom].S.k[kol]:=IntStr(S1); //количество этого элемента
+
+end;
+Mas[kolKom].kol:=kol;
+
+end;
+
+Function GetMoney(s:string): integer; //возвращает стоимость предмета и 0 если не указана
+var i,r: integer;
+begin
+
+for i:=1 to kolmon do if Mon[i].name=s then begin
+GetMoney:=Mon[i].m; 
+end;
+
+writeln();
+end;
+
+Procedure DobMoney(ss: string); //добавляет в mas стоимость товара
+var i,r: integer;
+var S,S1: string;
+var kol: integer;
+begin
+S:=TextStr(ss);
+r:=intstr(ss);
+kolmon:=kolmon+1;
+Mon[kolmon].name:=S;
+Mon[kolmon].m:=r;
+end;
+
+Procedure Vvod(ss: string); //заносит содержимое файла в Mas
+var t: text;
+begin
+if fileexists(ss+'.txt') then begin 
+Assign(t,ss+'.txt');
+reset(t);
+while not(eof(t)) do begin readln(t,s); if length(s)>0 then if Pos('#',s)=0 then Dob(s); end;
+close(t);
+end else begin
+SetFontSize(30);
+Writeln('Не найден файл '+ss+'.txt ');
+Writeln('Создайте текстовый файл с этим именем и запишите');
+Writeln('в него рецепты, а затем перезапустите программу');
+while 1=1 do readln();
+end;
+
+//считываем цены на товары в золоте
+
+if fileexists('money.txt') then begin 
+Assign(t,'money.txt');
+reset(t);
+while not(eof(t)) do begin 
+readln(t,s); 
+if length(s)>0 then if Pos('#',s)=0 
+then DobMoney(s); 
+end;
+
+
+
+close(t);
+end;
+
+
+
+end;
+Function F(n: integer): komponent; //возвращает список всего, что нужно для крафта компонета, включая его составляющие
+var k: komponent;
+var i: integer;
+Function Vozv(s: string): integer; //возвращает компонент с таким названием из массива Mas по номеру. Если не существвует, возвращает 0.
+var i: integer;
+begin
+for i:=1 to kolkom do if Mas[i].name=s then Vozv:=i; 
+end;
+
+Function Sum(k: komponent; S: string; kol: integer): komponent; //добавляет в компонент строку
+var k2: komponent;
+var i: integer;
+var b: boolean;
+begin
+k2:=k;
+b:=false;
+for i:=1 to k2.kol do if k2.S.a[i]=S then begin k2.S.k[i]:=k2.S.k[i]+kol; b:=true; end; //увеличиваем количество компонентов на 1
+
+if b=false then begin
+k2.kol:=k2.kol+1;
+k2.S.a[k2.kol]:=S;
+k2.S.k[k2.kol]:=kol;
+end;
+Sum:=k2;
+end;
+Function Sum2(k1,k2: komponent; kol: integer): komponent; //добавляет в компонент второй компонент
+var k: komponent; 
+var i,r: integer;
+begin
+k:=k1;
+for i:=1 to k2.kol  do k:=Sum(k,k2.S.a[i],k2.S.k[i]*kol);
+Sum2:=k;
+end;
+
+
+
+begin
+for i:=1 to Mas[n].kol do begin
+if Vozv(Mas[n].S.a[i])=0 then k:=Sum(k,Mas[n].S.a[i],Mas[n].S.k[i]) else
+k:=Sum2(k,F(Vozv(Mas[n].S.a[i])),Mas[n].S.k[i]);
+end;
+F:=k;
+end;
+
+Procedure Start(); //установка текстур
+var i,r: integer;
+begin
+if fileexists('icon/fon.jpg') then fon:=new picture('icon/fon.jpg');
+SetFontSize(10);
+for i:=1 to 300 do Tex[i]:=new Picture(1,1);
+for i:=1 to 300 do if fileexists('icon/'+Mas[i].name+'.png') then  Tex[i]:=new Picture('icon/'+Mas[i].name+'.png') else begin 
+Tex[i]:=Pusto;
+for r:=1 to (length(Mas[i].name) div 8)+1 do Tex[i].TextOut(0,r*20-dy,copy(Mas[i].name,(r-1)*9+1,9)); 
+
+Tex[i].save('icon/'+Mas[i].name+'.png');
+end;
+
+
+s:='Всё';
+for i:=1 to kolKom do S:=S+', '+Mas[i].name;
+
+Dob(s);
+SetFontSize(20);
+
+Gold:=new picture('icon/'+'gold.png');
+end;
+
+Procedure Ris(); //создаёт интерфейс
+var i,r: integer;
+begin
+clear();
+SetFontSize(20);
+for i:=0 to Высота-1 do 
+for r:=1 to Ширина do 
+if (r+i*Ширина)<=kolKom then begin 
+Tex[r+i*Ширина].Draw((r-1)*ШиринаФото+20,(i)*ВысотаФото+20-dy);
+if Tex[r+i*Ширина].Height=1 then TextOut((r-1)*ШиринаФото+20,(i)*ВысотаФото+110,Mas[r+i*Ширина].name);
+end;
+redraw;
+end;
+Procedure Ris2(x,y: integer; S: string; kol: integer); //рисует на координатах X Y преддметы
+var i,r: integer;
+var P: picture;
+begin
+SetFontSize(10);
+if fileexists('icon/'+s+'.png') then P:=new Picture('icon/'+s+'.png') else begin 
+P:=Pusto;
+for i:=1 to (length(s) div 8)+1 do P.TextOut(0,i*20,copy(s,(i-1)*9+1,9)); 
+P.save('icon/'+s+'.png');
+
+end;
+
+if GetMoney(s)=0 then begin
+SetBrushColor(clRed);
+FillRect(x-3,y-3,x+P.Width+3,y+P.height+3);
+Rez.FillRect(x-3,y-3,x+P.Width+3,y+P.height+3);
+SetBrushColor(clWhite);
+end;
+P.Draw(x,y);
+for i:=0 to P.Width-1 do
+  for r:=0 to P.Height-1 do Rez.setpixel(x+i,y+r,P.GetPixel(i,r));
+
+
+if P.Height=1 then TextOut(x,y+ШиринаФото,Mas[i].name);
+if P.Height=1 then Rez.TextOut(x,y+ШиринаФото,Mas[i].name);
+SetFontSize(20);
+if kol>0 then if V<>666 then TextOut(x+10,y+ВысотаФото-40,kol);
+if kol>0 then if V<>666 then Rez.TextOut(x+10,y+ВысотаФото-40,kol+'');
+SetFontColor(clorange);
+if GetMoney(s)>0 then if V<>666 then begin
+TextOut(x+155,y+ВысотаФото-40,GetMoney(s)*kol);
+Gold.draw(x+100,y+ВысотаФото-45);
+Rez.TextOut(x+155,y+ВысотаФото-40,GetMoney(s)*kol+'');
+
+for i:=0 to Gold.Width-1 do
+  for r:=0 to Gold.Height-1 do Rez.setpixel(x+i+100,y+r+125,Gold.GetPixel(i,r));
+
+
+end;
+
+SetFontColor(clwhite);
+SetFontSize(20);
+end;
+
+Procedure Vivod(SSS: string); //выводит список необходимого для крафта компонента
+var k: komponent;
+var j: string;
+var i,r,kol,kk,m,g,x,y: integer;
+var a1:array[1..100] of integer;
+var a2:array[1..100] of string;
+var b: boolean;
+Function Vozv(s: string): integer; //возвращает компонент с таким названием из массива Mas по номеру. Если не существвует, возвращает 0.
+var i: integer;
+begin
+for i:=1 to kolkom do if Mas[i].name=s then Vozv:=i; 
+end;
+begin
+k:=F(Vozv(SSS));
+for i:=1 to k.kol do 
+begin    
+b:=false; 
+for g:=1 to m do if a2[g]=k.S.a[i] then b:=true;
+if b=false then begin
+kk:=0;
+for r:=1 to k.kol do if k.S.a[r]=k.S.a[i] then kk:=kk+k.S.k[r];
+m:=m+1;
+a1[m]:=kk;
+a2[m]:=k.S.a[i];
+end;
+end;
+
+
+
+g:=1;
+while g<m do  //сортируем
+if a1[g]>=a1[g+1] then g:=g+1 else 
+begin
+j:=a2[g];
+a2[g]:=a2[g+1];
+a2[g+1]:=j;
+i:=a1[g];
+a1[g]:=a1[g+1];
+a1[g+1]:=i;
+if g>1 then g:=g-1;
+end;
+
+//выводим на экран
+clear();
+if m<=10 then Ris2(10,30,SSS,0) else Ris2(10,30,SSS,0);
+SumMoney:=0;
+for i:=1 to m do begin //детальныое количество ресурсов для крафта
+if Vozv(SSS)=kolkom then v:=666; 
+Ris2(30+ШиринаФото*((i-1) mod Ширина),260+(ВысотаФото)*((i-1) div Ширина),a2[i],a1[i]); 
+SumMoney:=SumMoney+GetMoney(a2[i])*a1[i];
+v:=0; 
+end; 
+
+
+//выводим обычный рецепт
+if (Vozv(sss)>0) and (Vozv(sss)<kolKom) then for i:=1 to Mas[Vozv(sss)].kol do begin
+x:=200+ШиринаФото+90+(i-2)*(ШиринаФото+15); y:=30;
+SetFontSize(20);
+if i=1 then textOut(x-23,y+(ВысотаФото div 2)-10,'=') else  textOut(x-15,y+(ВысотаФото div 2)-10,'+');
+if i=1 then TextOut(x-200,y+Round(ВысотаФото+25),'Суммарная стоимость: '+SumMoney+'          Список компонентов:');
+Ris2(x,y,Mas[Vozv(sss)].S.a[i],Mas[Vozv(sss)].S.k[i]);
+end;
+//выводим всё в файл
+if m<=10 then Ris2(10,30,SSS,0) else Ris2(10,30,SSS,0);
+SumMoney:=0;
+for i:=1 to m do begin //детальныое количество ресурсов для крафта
+if Vozv(SSS)=kolkom then v:=666; 
+Ris2(30+ШиринаФото*((i-1) mod Ширина),260+(ВысотаФото)*((i-1) div Ширина),a2[i],a1[i]); 
+SumMoney:=SumMoney+GetMoney(a2[i])*a1[i];
+v:=0; 
+end; 
+if (Vozv(sss)>0) and (Vozv(sss)<kolKom) then for i:=1 to Mas[Vozv(sss)].kol do begin
+x:=200+ШиринаФото+90+(i-2)*(ШиринаФото+15); y:=30;
+SetFontSize(20);
+if i=1 then Rez.textOut(x-23,y+(ВысотаФото div 2)-10,'=') else  Rez.textOut(x-15,y+(ВысотаФото div 2)-10,'+');
+if i=1 then Rez.TextOut(x-200,y+Round(ВысотаФото+25),'Суммарная стоимость: '+SumMoney+'          Список компонентов:');
+Ris2(x,y,Mas[Vozv(sss)].S.a[i],Mas[Vozv(sss)].S.k[i]);
+end;
+Rez.Save('rez.bmp');
+//конец вывода
+
+redraw();
+end;
+Procedure MouseDown(xx,y,mb:integer);
+var yy: integer;
+begin
+yy:=y+dy;
+if Craft=true then begin Craft:=false;  Clear(); Ris; exit; end; //переход в основное меню
+if Craft=false then if (((yy-20) div ВысотаФото))*Ширина+(((xx-20) div ШиринаФото)+1)>0 then 
+begin 
+if (((yy-20) div ВысотаФото))*Ширина+(((xx-20) div ШиринаФото)+1)<=kolkom then 
+Vivod(Mas[(((yy-20) div ВысотаФото))*Ширина+(((xx-20) div ШиринаФото)+1)].name); 
+Craft:=true; 
+exit;
+end;
+
+
+end;
+
+Procedure KeyDown(key: integer);
+begin
+if Key=Vk_down then begin
+dy:=dy+ВысотаФото div 3;
+if dy<0 then dy:=0 else
+Ris();
+end;
+if Key=Vk_up then begin
+dy:=dy-ВысотаФото div 3;
+if dy<0 then dy:=0 else
+Ris();
+end;
+
+
+end;
+
+begin
+  Rez:=new Picture(2500,2100);
+  setbrushcolor(clBlack);
+Rez.FillRect(0,0,2499,2099);
+lockdrawing;
+SetFontColor(clWhite);
+SetBrushStyle(bsClear);
+
+SetFontSize(20);
+OnMouseDown:=MouseDown;
+OnKeyDown:=KeyDown;
+SetWindowSize(ШиринаФото*(Ширина)+40,ВысотаФото*(Высота));
+SetWindowPos(10,10);
+SetWindowCaption('Калькулятор крафта от _Kio_');
+Vvod('Crafts');
+SetFontSize(20);
+Start;
+
+
+
+Ris;
+
+
+end.
