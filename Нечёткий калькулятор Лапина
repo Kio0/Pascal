@@ -1,0 +1,166 @@
+//нечёткие множества
+Uses GraphABC;
+
+type NM=record
+kol: integer;
+y: array[1..1000] of real; // значение от 0 до 1
+x: array[1..1000] of real; //аргумент
+end;
+
+var N,M: NM;
+const Шир=600;
+const Выс=300;
+Function Егер(N: NM):real; //возвращает 
+var i,r: integer;
+var g: real;
+begin
+for i:=1 to N.kol do g:=g+abs((1-N.y[i])-N.y[i]);
+g:=g/N.kol;
+g:=1-g;
+Егер:=g;
+
+end;
+
+
+Function Con(N: NM):NM; //возведение в квадрат
+var M: NM;
+var i: integer;
+begin
+M:=N;
+for i:=1 to M.kol do M.y[i]:=M.y[i]*M.y[i];
+Con:=M;
+end;
+Function Dil(N: NM):NM; //возведение в квадрат
+var M: NM;
+var i: integer;
+begin
+M:=N;
+for i:=1 to M.kol do M.y[i]:=sqrt(M.y[i]);
+Dil:=M;
+end;
+Function Пересечение(N1,N2: NM): NM; //наименьшее значение
+var N: NM;
+var i,r: integer;
+begin
+N:=N1;
+for i:=1 to N2.kol do begin N.kol:=N.kol+1; N.x[N.kol]:=N2.x[i]; N.y[N.kol]:=N2.y[i];  end;
+for i:=1 to N.kol do
+for r:=1 to N.kol do if i<>r then begin
+if N.x[i]=N.x[r] then begin 
+if N.y[i]<N.y[r] then N.y[r]:=N.y[i] else N.y[i]:=N.y[r];
+end;
+Пересечение:=N;
+end;
+
+end;
+Function Объединение(N1,N2: NM): NM; //наибольшее значение
+var N: NM;
+var i,r: integer;
+begin
+N:=N1;
+for i:=1 to N2.kol do begin N.kol:=N.kol+1; N.x[N.kol]:=N2.x[i]; N.y[N.kol]:=N2.y[i];  end;
+for i:=1 to N.kol do
+for r:=1 to N.kol do if i<>r then begin
+if N.x[i]=N.x[r] then begin 
+if N.y[i]>N.y[r] then N.y[r]:=N.y[i] else N.y[i]:=N.y[r];
+end;
+Объединение:=N;
+end;
+end;
+
+
+procedure Ris(N:NM; CC:color);
+var i,r: integer;
+var min,max: real;
+function dx(x: real): integer; //возвращает пиксель по х
+begin dx:=60+Round((x-min)*(Шир/(max-min+0.000001))) end;
+function dy(y: real): integer; //возвращает пиксель по y
+begin dy:=Round(60+Выс-(Выс*y)) end;
+function Sort(): NM; //сортирует 
+var i,r: integer;
+var g:real;
+var M: Nm;
+begin
+M:=N;
+for r:=1 to M.kol do
+for i:=1 to M.kol-1 do if M.x[i]>M.x[i+1] then begin
+g:=M.x[i]; M.x[i]:=M.x[i+1]; M.x[i+1]:=g;
+g:=M.y[i]; M.y[i]:=M.y[i+1]; M.y[i+1]:=g;
+end;
+Sort:=M;
+end;
+
+begin
+N:=Sort();
+
+max:=N.x[1];min:=N.x[1];
+for i:=1 to N.kol do begin
+if N.x[i]>max then max:=N.x[i];
+if N.x[i]<min then min:=N.x[i];
+end;
+
+
+for i:=1 to N.kol do textOut(dx(N.x[i]),dy(0)+20,N.x[i]);
+
+setpencolor(clred);
+circle(dx(0),dy(0),4);
+line(dx(0),dy(0),dx(0),dy(1));
+line(1,dy(0),1,dy(1));
+line(dx(0),dy(0),dx(max+2),dy(0));
+
+setpencolor(rgb(220,220,220));
+for i:=1 to 10 do line(dx(0),dy(i/10),dx(max),dy(i/10));
+for i:=1 to 10 do textOut(15,dy(i/10),i/10);
+for i:=1 to N.kol do line(dx(N.x[i]),dy(0),dx(N.x[i]),dy(1));;
+
+
+//строим график
+setpencolor(CC);
+for i:=1 to N.kol-1 do line(dx(N.x[i]),dy(N.y[i]),dx(N.x[i+1]),dy(N.y[i+1]));
+//for i:=1 to N.kol do circle(dx(N.x[i]),dy(N.y[i]),5);
+
+
+
+//textout(30,30,Егер(N));
+end;
+Function Get(s: string): NM; //задаёт нечёткое выражение по его строковой записи. Пример: "0.1/3 0.2/4.5 0.3/7 0.5/10"
+var i,r: integer;
+var s1,str: string;
+var N: NM;
+Function intstr(s:string):real;
+var i,r,Sum: integer;
+var g:real;
+begin
+for i:=1 to length(s) do begin
+for r:=0 to 9 do if s[i]=r+'' then Sum:=Sum*10+r;
+end;
+G:=Sum;
+if pos('.',s)=0 then intstr:=G else for i:=1 to length(s)-pos('.',s) do G:=G/10;
+intstr:=g;
+end;
+begin
+str:=s+' ';
+for i:=1 to length(str) do begin
+if str[i]<>' ' then s1:=s1+str[i] else begin
+N.kol:=N.kol+1;
+N.x[N.kol]:=intstr(copy(s1,1,pos('/',s1)-1));
+N.y[N.kol]:=intstr(copy(s1,pos('/',s1)+1,length(s1)-pos('/',s1)));
+
+s1:='';
+end;
+
+end;
+Get:=N;
+end;
+var i,r: integer;
+begin
+setwindowsize(Шир+120,Выс+120);
+
+
+N:=Get('1/0.8 2/0.6 3/0.9 4/1');
+
+Ris(N,ClBlack);
+Ris(Con(N),ClRed);
+Ris(Dil(N),ClGreen);
+//Ris(Объединение(N,Con(N)),clBlue);
+end.
